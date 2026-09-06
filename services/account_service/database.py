@@ -162,7 +162,7 @@ def ejecutar_transferencia(
     is_sqlite = target_url.startswith("sqlite")
     conn = get_connection(target_url)
 
-    # Orden canónico determinista para evitar deadlocks entre transacciones concurrentes cruzadas
+    #orden canonico determinista para evitar interbloqueos entre transferencias concurrentes cruzadas
     primer_id, segundo_id = (
         (emisor_id, receptor_id) if emisor_id < receptor_id else (receptor_id, emisor_id)
     )
@@ -171,11 +171,11 @@ def ejecutar_transferencia(
         with conn:
             cur = conn.cursor()
             if is_sqlite:
-                # En SQLite se leen y validan ambas cuentas secuencialmente
+                #en sqlite se leen y validan ambas cuentas secuencialmente
                 cur.execute("SELECT user_id, saldo FROM cuentas WHERE user_id IN (?, ?)", (primer_id, segundo_id))
                 rows = cur.fetchall()
             else:
-                # En PostgreSQL se bloquean ambas filas en orden ascendente por clave primaria
+                #en postgresql se bloquean ambas filas en orden ascendente por clave primaria
                 cur.execute(
                     """
                     SELECT user_id, saldo FROM cuentas
