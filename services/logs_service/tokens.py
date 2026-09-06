@@ -1,5 +1,7 @@
+#importar tipado para diccionarios y opcionales
 from typing import Dict, Optional
 
+#definir tokens estaticos con mapeo a servicios autorizados
 TOKENS_VALIDOS: Dict[str, str] = {
     "TOKEN-ATM-001": "atm-cash-service",
     "TOKEN-AUTH-002": "atm-auth-service",
@@ -8,8 +10,10 @@ TOKENS_VALIDOS: Dict[str, str] = {
     "TOKEN-ADMIN-005": "admin",
 }
 
+#validar si el token recibido esta registrado
 def validar_token_servicio(token_candidato: Optional[str]) -> Optional[str]:
-    """Valida si el token provisto corresponde a un servicio o rol autorizado."""
+    #descartar tokens nulos
     if not token_candidato:
         return None
+    #buscar servicio asociado al token
     return TOKENS_VALIDOS.get(token_candidato.strip())
