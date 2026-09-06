@@ -1,6 +1,15 @@
-# Fuente única de la verdad. Mapeo estricto 1 a 1 por microservicio.
-TOKENS_VALIDOS = {
-    "TOKEN-AUTH-002":     "atm-auth-service",    # Usado por el Guardián (auth.py)
-    "TOKEN-PAYMENTS-003": "atm-account-service", # Usado por el Operador (account.py)
-    "TOKEN-ADMIN-005":    "admin",               # Tu pase VIP para leer los logs
+from typing import Dict, Optional
+
+TOKENS_VALIDOS: Dict[str, str] = {
+    "TOKEN-ATM-001": "atm-cash-service",
+    "TOKEN-AUTH-002": "atm-auth-service",
+    "TOKEN-PAYMENTS-003": "atm-account-service",
+    "TOKEN-WATCHDOG-004": "atm-hardware-service",
+    "TOKEN-ADMIN-005": "admin",
 }
+
+def validar_token_servicio(token_candidato: Optional[str]) -> Optional[str]:
+    """Valida si el token provisto corresponde a un servicio o rol autorizado."""
+    if not token_candidato:
+        return None
+    return TOKENS_VALIDOS.get(token_candidato.strip())
