@@ -1,4 +1,4 @@
-
+### 1. Autenticación: Login de Usuario
 POST http://localhost:5001/login
 Content-Type: application/json
 
@@ -7,25 +7,37 @@ Content-Type: application/json
   "pin": "2701"
 }
 
+### 2. Consulta de Saldo
+GET http://localhost:5002/saldo
+Authorization: Bearer {{token}}
 
-
-
-
-
+### 3. Operación de Retiro de Fondos
 POST http://localhost:5002/retiro
-Authorization: Bearer (token generado aca)
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "monto": 500000
 }
 
-# -> Si el token es correcto, te descontará el saldo y te mostrará el éxito.
+### 4. Operación de Transferencia Intercuentas
+POST http://localhost:5002/transferir
+Authorization: Bearer {{token}}
+Content-Type: application/json
 
-### 3. La Observabilidad: Revisar el Rastro
-# Esto golpeará al logs_service en el puerto 5000.
+{
+  "receptor_id": 2,
+  "monto": 100000
+}
+
+### 5. Auditoría: Consulta General de Logs
 GET http://localhost:5000/logs
 Authorization: Token TOKEN-ADMIN-005
 
-# -> Aquí verás la magia. Verás que tanto el Guardián (Auth) como el Operador (Account)
-# se comunicaron silenciosamente con este servicio para dejar un registro de lo que hiciste.
+### 6. Auditoría: Consulta Filtrada por Servicio y Severidad
+GET http://localhost:5000/logs?service=atm-auth-service&severity=INFO
+Authorization: Token TOKEN-ADMIN-005
+
+### 7. Auditoría: Métricas y Estadísticas Agregadas
+GET http://localhost:5000/stats
+Authorization: Token TOKEN-ADMIN-005
