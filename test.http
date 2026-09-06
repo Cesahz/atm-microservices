@@ -1,0 +1,31 @@
+
+POST http://localhost:5001/login
+Content-Type: application/json
+
+{
+  "username": "Cesar Espinola",
+  "pin": "2701"
+}
+
+
+
+
+
+
+POST http://localhost:5002/retiro
+Authorization: Bearer (token generado aca)
+Content-Type: application/json
+
+{
+  "monto": 500000
+}
+
+# -> Si el token es correcto, te descontará el saldo y te mostrará el éxito.
+
+### 3. La Observabilidad: Revisar el Rastro
+# Esto golpeará al logs_service en el puerto 5000.
+GET http://localhost:5000/logs
+Authorization: Token TOKEN-ADMIN-005
+
+# -> Aquí verás la magia. Verás que tanto el Guardián (Auth) como el Operador (Account)
+# se comunicaron silenciosamente con este servicio para dejar un registro de lo que hiciste.

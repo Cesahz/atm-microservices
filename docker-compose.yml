@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # 1. LOGS
+  # primero levanta la db de logs
+  db_logs:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: logs_db
+    ports:
+      - "5435:5432"
+
+  # despues el servicio que lo usa, espera a que db_logs arranque
+  logs_service:
+    build: ./services/logs_service
+    ports:
+      - "5005:5000" 
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db_logs:5432/logs_db
+    depends_on:
+      - db_logs
+
+  # 2. AUTH
+  db_auth:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: auth_db
+    ports:
+      - "5433:5432"
+
+  # recibe usuario+pin, valida, emite jwt y reporta a logs_service
+  auth_service:
+    build: ./services/auth_service
+    ports:
+      - "5001:5001"
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db_auth:5432/auth_db
+      - LOGS_URL=http://logs_service:5000/logs  # habla con logs por nombre de servicio docker
+      - JWT_SECRET=${JWT_SECRET}                 # clave compartida con account para firmar/verificar tokens
+      - TOKEN_AUTH=${TOKEN_AUTH}                 # token estatico para autenticarse ante logs_service
+    depends_on:
+      - db_auth
+
+  # 3. ACCOUNT
+  # db privada del operador financiero
+  db_operador:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: operador_db
+    ports:
+      - "5434:5432"
+
+  # valida el jwt que emitio auth, ejecuta retiros/transferencias y reporta a logs
+  account_service:
+    build: ./services/account_service
+    ports:
+      - "5002:5002"
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db_operador:5432/operador_db
+      - LOGS_URL=http://logs_service:5000/logs
+      - JWT_SECRET=${JWT_SECRET}                        # misma clave que auth para poder verificar el token
+      - TOKEN_LOGS_ACCOUNT=${TOKEN_ACCOUNT}             # token estatico para autenticarse ante logs_service
+    depends_on:
+      - db_operador
