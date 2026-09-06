@@ -3,8 +3,12 @@ import sqlite3
 import time
 from typing import Any, List, Optional, Tuple, Union
 import psycopg2
-from config import config
-from security import hash_pin, verify_pin
+try:
+    from .config import config
+    from .security import hash_pin, verify_pin
+except ImportError:
+    from config import config
+    from security import hash_pin, verify_pin
 
 DEFAULT_USERS: List[Tuple[str, str]] = [
     ("Cesar Espinola", "2701"),

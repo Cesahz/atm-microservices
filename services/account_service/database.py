@@ -3,7 +3,10 @@ import sqlite3
 import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 import psycopg2
-from config import config
+try:
+    from .config import config
+except ImportError:
+    from config import config
 
 DEFAULT_BALANCES: List[Tuple[int, Decimal]] = [
     (1, Decimal("5000000")),

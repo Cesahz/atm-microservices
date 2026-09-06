@@ -2,9 +2,14 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from flask import Flask, jsonify, request, Response
 
-from config import config
-import database
-from tokens import validar_token_servicio
+try:
+    from .config import config
+    from . import database
+    from .tokens import validar_token_servicio
+except ImportError:
+    from config import config
+    import database
+    from tokens import validar_token_servicio
 
 SEVERIDADES_VALIDAS = {"INFO", "DEBUG", "WARN", "ERROR", "FATAL"}
 

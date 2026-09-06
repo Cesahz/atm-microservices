@@ -3,7 +3,10 @@ import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from config import config
+try:
+    from .config import config
+except ImportError:
+    from config import config
 
 def get_connection(db_url: Optional[str] = None) -> Union[psycopg2.extensions.connection, sqlite3.Connection]:
     """Obtiene una conexión a la base de datos (PostgreSQL o SQLite para pruebas)."""

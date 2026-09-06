@@ -3,9 +3,14 @@ from typing import Any, Dict, Optional, Tuple
 import requests
 from flask import Flask, jsonify, request, Response
 
-from config import config
-import database
-from security import create_access_token
+try:
+    from .config import config
+    from . import database
+    from .security import create_access_token
+except ImportError:
+    from config import config
+    import database
+    from security import create_access_token
 
 def enviar_log_silencioso(
     mensaje: str,

@@ -5,8 +5,12 @@ import jwt
 import requests
 from flask import Flask, jsonify, request, Response
 
-from config import config
-import database
+try:
+    from .config import config
+    from . import database
+except ImportError:
+    from config import config
+    import database
 
 def enviar_log_silencioso(
     mensaje: str,
