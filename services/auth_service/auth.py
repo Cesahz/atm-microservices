@@ -1,61 +1,114 @@
-import os
-import jwt
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional, Tuple
 import requests
-from datetime import datetime, timedelta, timezone
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify, request, Response
+
+from config import config
 import database
+from security import create_access_token
 
-#iniciar el objeto flask
-app = Flask(__name__)
-
-#variables globales
-LOGS_URL = os.environ.get("LOGS_URL", "http://logs_service:5000/logs")
-SECRET_KEY = os.environ.get("JWT_SECRET", "secreto_del_pinguino_aislado")
-TOKEN_LOGS = os.environ.get("TOKEN_AUTH", "TOKEN-AUTH-002") 
-
-
-def enviar_log_silencioso(mensaje, severidad="INFO"):
-    log_data = {
+def enviar_log_silencioso(
+    mensaje: str,
+    severidad: str = "INFO",
+    logs_url: Optional[str] = None,
+    token_auth: Optional[str] = None
+) -> None:
+    """Envía un evento de auditoría a logs_service de forma tolerante a fallos."""
+    url = logs_url or config.logs_url
+    token = token_auth or config.token_auth
+    log_data: Dict[str, Any] = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "service": "atm-auth-service",
+        "service": config.service_name,
         "severity": severidad,
-        "message": mensaje
+        "message": mensaje,
     }
     try:
-        #si el servicio de logs no responde, sigue sin problemas
-        requests.post(LOGS_URL, json=log_data, headers={"Authorization": f"Token {TOKEN_LOGS}"}, timeout=2)
-    except:
-        pass 
+        requests.post(
+            url,
+            json=log_data,
+            headers={"Authorization": f"Token {token}"},
+            timeout=2.0,
+        )
+    except requests.exceptions.RequestException:
+        pass
 
-#endpoint para login, recibe username y pin, devuelve token JWT si es correcto
-@app.route("/login", methods=["POST"])
-def login():
-    datos = request.get_json()
-    if not datos or not "username" in datos or not "pin" in datos:
-        return jsonify({"error": "Faltan credenciales"}), 400
 
-    username = datos["username"]
-    pin = datos["pin"]
+def create_app(test_config: Optional[Dict[str, Any]] = None) -> Flask:
+    """Fábrica de aplicaciones Flask para el servicio de autenticación."""
+    app = Flask(__name__)
 
-    usuario = database.verificar_credenciales(username, pin)
+    if test_config:
+        app.config.update(test_config)
 
-    #verificar si el usuario existe y el pin es correcto
-    if usuario:
-        #si existe, genera un token JWT con el user_id que expira en 15 minutos
-        token = jwt.encode(
-            {
-            "user_id": usuario[0],
-            "exp": datetime.now(timezone.utc) + timedelta(minutes=15)
-            },  #carga del token
-            SECRET_KEY, #clave secreta para firmar el token
-            algorithm="HS256") #tipo de encriptacion
-        
-        enviar_log_silencioso(f"Login exitoso para usuario: {username}")
-        return jsonify({"token": token}), 200
-    else:
-        enviar_log_silencioso(f"Intento de acceso denegado: {username}", "WARN")
+    db_url = app.config.get("DATABASE_URL", config.database_url)
+    logs_url = app.config.get("LOGS_URL", config.logs_url)
+    jwt_secret = app.config.get("JWT_SECRET", config.jwt_secret)
+    token_auth = app.config.get("TOKEN_AUTH", config.token_auth)
+    expiry_minutes = app.config.get("JWT_EXPIRY_MINUTES", config.jwt_expiry_minutes)
+
+    @app.route("/health", methods=["GET"])
+    def health() -> Tuple[Response, int]:
+        """Endpoint de verificación de estado y conectividad."""
+        return jsonify({
+            "status": "healthy",
+            "service": config.service_name,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }), 200
+
+    @app.route("/login", methods=["POST"])
+    def login() -> Tuple[Response, int]:
+        """
+        Autentica usuario y PIN, retornando un token JWT de acceso.
+        """
+        if not request.is_json:
+            return jsonify({"error": "El cuerpo de la solicitud debe ser un JSON válido"}), 400
+
+        datos = request.get_json(silent=True)
+        if not isinstance(datos, dict):
+            return jsonify({"error": "Formato de datos no válido"}), 400
+
+        username = datos.get("username")
+        pin = datos.get("pin")
+
+        if not username or not pin:
+            return jsonify({"error": "Faltan credenciales obligatorias (username y pin)"}), 400
+
+        username_str = str(username).strip()
+        pin_str = str(pin).strip()
+
+        if not username_str or not pin_str:
+            return jsonify({"error": "Las credenciales no pueden estar vacías"}), 400
+
+        resultado = database.verificar_credenciales(username_str, pin_str, db_url=db_url)
+
+        if resultado is not None:
+            user_id, valid_username = resultado
+            token = create_access_token(
+                user_id=user_id,
+                secret_key=jwt_secret,
+                expiry_minutes=expiry_minutes,
+            )
+            enviar_log_silencioso(
+                f"Login exitoso para usuario: {valid_username}",
+                severidad="INFO",
+                logs_url=logs_url,
+                token_auth=token_auth,
+            )
+            return jsonify({"token": token}), 200
+
+        enviar_log_silencioso(
+            f"Intento de acceso denegado para usuario: {username_str}",
+            severidad="WARN",
+            logs_url=logs_url,
+            token_auth=token_auth,
+        )
         return jsonify({"error": "Credenciales invalidas"}), 401
+
+    return app
+
+
+app = create_app()
 
 if __name__ == "__main__":
     database.inicializar_db()
-    app.run(host="0.0.0.0", port=5001, debug=True)
+    app.run(host=config.host, port=config.port, debug=False)
