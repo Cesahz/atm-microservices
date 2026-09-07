@@ -1,4 +1,4 @@
-# 🏧 ATM System — The Huddle 7 (Remastered Edition)
+# ATM System — The Huddle 7 (Remastered Edition)
 
 Sistema transaccional distribuido de simulación de Cajero Automático (ATM) construido sobre una arquitectura de **microservicios desacoplados**, garantizando consistencia transaccional, tolerancia a fallos, auditoría centralizada y alta concurrencia.
 
